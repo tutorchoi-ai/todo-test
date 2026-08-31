@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>오늘의 할일</title>
+<style>
+  :root{
+    --bg:#f4f5f7;
+    --card:#ffffff;
+    --text:#1f2430;
+    --muted:#8a91a0;
+    --line:#e7e9ee;
+    --accent:#4f7cff;
+    --accent-soft:#eaf0ff;
+    --danger:#e05252;
+    --shadow:0 10px 30px rgba(24,32,55,.08);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161c;
+      --card:#1c1f27;
+      --text:#e8eaf0;
+      --muted:#868d9c;
+      --line:#2a2e39;
+      --accent:#6b8fff;
+      --accent-soft:#232a3d;
+      --danger:#ef6b6b;
+      --shadow:0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:var(--bg);
+    color:var(--text);
+    font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,-apple-system,sans-serif;
+    display:flex;
+    justify-content:center;
+    padding:40px 16px 64px;
+  }
+  .app{width:100%;max-width:560px}
+
+  header{margin-bottom:22px}
+  .date{font-size:13px;color:var(--muted);letter-spacing:.3px}
+  h1{margin:6px 0 0;font-size:28px;font-weight:700;letter-spacing:-.5px}
+
+  .progress-wrap{margin-top:18px}
+  .progress-meta{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:7px}
+  .bar{height:6px;background:var(--line);border-radius:99px;overflow:hidden}
+  .bar > i{display:block;height:100%;width:0;background:var(--accent);border-radius:99px;transition:width .35s ease}
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:16px;
+    box-shadow:var(--shadow);
+    padding:14px;
+    margin-top:20px;
+  }
+
+  form{display:flex;gap:8px}
+  input[type=text]{
+    flex:1;
+    padding:12px 14px;
+    font-size:15px;
+    color:var(--text);
+    background:transparent;
+    border:1px solid var(--line);
+    border-radius:10px;
+    outline:none;
+    font-family:inherit;
+  }
+  input[type=text]:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  button{font-family:inherit;cursor:pointer}
+  .add{
+    padding:12px 18px;
+    font-size:15px;
+    font-weight:600;
+    color:#fff;
+    background:var(--accent);
+    border:0;
+    border-radius:10px;
+  }
+  .add:active{transform:translateY(1px)}
+
+  .filters{display:flex;gap:6px;margin:18px 0 10px}
+  .filters button{
+    padding:7px 14px;
+    font-size:13px;
+    color:var(--muted);
+    background:transparent;
+    border:1px solid transparent;
+    border-radius:99px;
+  }
+  .filters button.on{color:var(--accent);background:var(--accent-soft);font-weight:600}
+
+  ul{list-style:none;margin:0;padding:0}
+  li{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:13px 4px;
+    border-bottom:1px solid var(--line);
+  }
+  li:last-child{border-bottom:0}
+  .check{
+    flex:none;
+    width:21px;height:21px;
+    border:2px solid var(--line);
+    border-radius:50%;
+    background:transparent;
+    display:grid;place-items:center;
+    padding:0;
+    transition:all .15s ease;
+  }
+  .check::after{
+    content:"";
+    width:9px;height:5px;
+    border-left:2px solid #fff;
+    border-bottom:2px solid #fff;
+    transform:rotate(-45deg) scale(.4);
+    opacity:0;
+    transition:all .15s ease;
+    margin-top:-2px;
+  }
+  li.done .check{background:var(--accent);border-color:var(--accent)}
+  li.done .check::after{opacity:1;transform:rotate(-45deg) scale(1)}
+  .text{flex:1;font-size:15px;line-height:1.45;word-break:break-word}
+  li.done .text{color:var(--muted);text-decoration:line-through}
+  .del{
+    flex:none;
+    border:0;background:transparent;
+    color:var(--muted);
+    font-size:19px;line-height:1;
+    padding:4px 6px;border-radius:8px;
+    opacity:0;transition:opacity .15s ease,color .15s ease;
+  }
+  li:hover .del,li:focus-within .del{opacity:1}
+  .del:hover{color:var(--danger)}
+
+  .empty{padding:34px 10px;text-align:center;color:var(--muted);font-size:14px}
+
+  footer{
+    display:flex;justify-content:space-between;align-items:center;
+    margin-top:14px;padding:0 4px;
+    font-size:12.5px;color:var(--muted);
+  }
+  .clear{border:0;background:transparent;color:var(--muted);font-size:12.5px;text-decoration:underline;text-underline-offset:3px}
+  .clear:hover{color:var(--danger)}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="date" id="date"></div>
+    <h1>오늘의 할일</h1>
+    <div class="progress-wrap">
+      <div class="progress-meta">
+        <span id="count">0 / 0개 완료</span>
+        <span id="percent">0%</span>
+      </div>
+      <div class="bar"><i id="bar"></i></div>
+    </div>
+  </header>
+
+  <div class="card">
+    <form id="form" autocomplete="off">
+      <input type="text" id="input" placeholder="할 일을 입력하세요" maxlength="120">
+      <button type="submit" class="add">추가</button>
+    </form>
+
+    <div class="filters" id="filters">
+      <button type="button" data-filter="all" class="on">전체</button>
+      <button type="button" data-filter="active">진행중</button>
+      <button type="button" data-filter="done">완료</button>
+    </div>
+
+    <ul id="list"></ul>
+    <div class="empty" id="empty">아직 할 일이 없어요. 오늘 무엇을 해볼까요?</div>
+  </div>
+
+  <footer>
+    <span id="left">남은 할 일 0개</span>
+    <button type="button" class="clear" id="clear">완료된 항목 지우기</button>
+  </footer>
+</div>
+
+<script>
+(function(){
+  var KEY = 'todo-page.items.v1';
+  var todos = load();
+  var filter = 'all';
+
+  var $list = document.getElementById('list');
+  var $empty = document.getElementById('empty');
+  var $input = document.getElementById('input');
+
+  document.getElementById('date').textContent =
+    new Date().toLocaleDateString('ko-KR', {year:'numeric', month:'long', day:'numeric', weekday:'long'});
+
+  function load(){
+    try{
+      var raw = localStorage.getItem(KEY);
+      var parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    }catch(e){
+      return [];
+    }
+  }
+
+  function save(){
+    try{ localStorage.setItem(KEY, JSON.stringify(todos)); }catch(e){}
+  }
+
+  function visible(){
+    if(filter === 'active') return todos.filter(function(t){ return !t.done; });
+    if(filter === 'done')   return todos.filter(function(t){ return t.done; });
+    return todos;
+  }
+
+  function render(){
+    var items = visible();
+    $list.innerHTML = '';
+
+    items.forEach(function(t){
+      var li = document.createElement('li');
+      if(t.done) li.className = 'done';
+
+      var check = document.createElement('button');
+      check.className = 'check';
+      check.type = 'button';
+      check.setAttribute('aria-label', t.done ? '완료 취소' : '완료 표시');
+      check.onclick = function(){ t.done = !t.done; save(); render(); };
+
+      var text = document.createElement('span');
+      text.className = 'text';
+      text.textContent = t.text;
+
+      var del = document.createElement('button');
+      del.className = 'del';
+      del.type = 'button';
+      del.textContent = '×';
+      del.setAttribute('aria-label', '삭제');
+      del.onclick = function(){
+        todos = todos.filter(function(x){ return x.id !== t.id; });
+        save(); render();
+      };
+
+      li.appendChild(check);
+      li.appendChild(text);
+      li.appendChild(del);
+      $list.appendChild(li);
+    });
+
+    if(items.length === 0){
+      $empty.style.display = 'block';
+      $empty.textContent = todos.length === 0
+        ? '아직 할 일이 없어요. 오늘 무엇을 해볼까요?'
+        : (filter === 'done' ? '완료한 할 일이 없어요.' : '진행중인 할 일이 없어요. 모두 끝냈네요!');
+    } else {
+      $empty.style.display = 'none';
+    }
+
+    var total = todos.length;
+    var done = todos.filter(function(t){ return t.done; }).length;
+    var pct = total ? Math.round(done / total * 100) : 0;
+    document.getElementById('count').textContent = done + ' / ' + total + '개 완료';
+    document.getElementById('percent').textContent = pct + '%';
+    document.getElementById('bar').style.width = pct + '%';
+    document.getElementById('left').textContent = '남은 할 일 ' + (total - done) + '개';
+  }
+
+  document.getElementById('form').addEventListener('submit', function(e){
+    e.preventDefault();
+    var v = $input.value.trim();
+    if(!v) return;
+    todos.push({
+      id: String(Date.now()) + Math.random().toString(16).slice(2),
+      text: v,
+      done: false
+    });
+    $input.value = '';
+    save(); render();
+  });
+
+  document.getElementById('filters').addEventListener('click', function(e){
+    var btn = e.target.closest('button');
+    if(!btn) return;
+    filter = btn.getAttribute('data-filter');
+    Array.prototype.forEach.call(this.children, function(b){
+      b.classList.toggle('on', b === btn);
+    });
+    render();
+  });
+
+  document.getElementById('clear').addEventListener('click', function(){
+    todos = todos.filter(function(t){ return !t.done; });
+    save(); render();
+  });
+
+  render();
+  $input.focus();
+})();
+</script>
+</body>
+</html>
